@@ -1,0 +1,38 @@
+# Specifies the Docker Compose file version.
+version: '3.9'
+
+# Define services, networks, and volumes for our application stack.
+services:
+  # Service for Cloud SQL Proxy.
+  cloudsql-proxy:
+    # Use the official Cloud SQL Proxy image.
+    image: gcr.io/cloudsql-docker/gce-proxy:1.16
+    # Command to run the proxy, connecting it to our Cloud SQL instance.
+    command: /cloud_sql_proxy -instances=trip-tracker-397316:us-central1:v3-triptracker-postgre-sql=tcp:0.0.0.0:5432 -credential_file=/config/trip-tracker-397316-509b3475e4db.json
+    # Mount the Google Cloud credentials from the host to the container.
+    volumes:
+      - ./trip-tracker-397316-509b3475e4db.json:/config/trip-tracker-397316-509b3475e4db.json
+    # Specify the environment variable for the credentials file.
+    environment:
+      - "CLOUD_SQL_PROXY_CREDENTIAL_FILE=/config/trip-tracker-397316-509b3475e4db.json"
+    # Expose port 5432 to allow database connections.
+    ports:
+      - "5432:5432"
+
+  # Service for our Flask web application.
+  web:
+    # Build the Docker image using the Dockerfile in the current directory.
+    build: .
+    # The command to run when the container starts.
+    command: flask run --host=0.0.0.0
+    # Mount the current directory on the host to /app in the container.
+    volumes:
+      - .:/app
+      - ./trip-tracker-397316-509b3475e4db.json:/config/trip-tracker-397316-509b3475e4db.json
+    # Map port 5000 in the container to port 5000 on the host.
+    ports:
+      - "5000:5000"
+    environment:
+      - "GOOGLE_APPLICATION_CREDENTIALS=/config/trip-tracker-397316-509b3475e4db.json"
+    env_file:
+      - .env
